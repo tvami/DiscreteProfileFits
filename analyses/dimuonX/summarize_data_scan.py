@@ -32,6 +32,11 @@ FAM_ORDER = ["exp", "expPoly", "polyExp", "bern"]
 FAM_COLOR = {"exp": "#2ca02c", "expPoly": "#1f77b4", "polyExp": "#d62728", "bern": "#9467bd"}
 NPAR_FLEX = 4       # n_par >= this => flexible form worth eyeballing (lots of curvature)
 
+# Limit fields written by doFit.py that the summary carries through to the sigma*B
+# conversion. All are in events at the r=1 normalization (sig_norm).
+LIMIT_FIELDS = ("exp_lim_events", "exp_lim_1sig_low", "exp_lim_1sig_high",
+                "exp_lim_2sig_low", "exp_lim_2sig_high", "sig_norm")
+
 
 def best_form(r):
     """(family, n_par) of the winning background-only pdf, or (None, None).
@@ -117,6 +122,10 @@ def main():
                    "bin_frac": binfrac,
                    "gof_ok": r.get("sbfit_prob", -1) >= PVAL_THRESH,
                    "m_min": r.get("m_min"), "m_max": r.get("m_max")}
+            # Expected limit + bands and the normalization convention, needed to turn
+            # the event limit into a sigma*B limit. doFit.py leaves these at -1 when
+            # AsymptoticLimits fails, so keep -1 rather than papering over it.
+            rec.update({k: r.get(k, -1.0) for k in LIMIT_FIELDS})
             row[str(m)] = rec
             rows.append((tag, m, rec))
 

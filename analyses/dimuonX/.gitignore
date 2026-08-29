@@ -10,6 +10,7 @@
 *.log
 
 # Bulk per-fit scan/study outputs (hundreds of MB, fully regenerable)
+/work_*/
 /data_fits/
 /data_fits_separate_v2/
 /ensemble_*/
