@@ -13,7 +13,8 @@ fitresults.root
 # This repo tracks ONLY the general fitting framework:
 #   Fitter.py  DataCardMaker.py  Utils.py  doFit.py  fit_signalshapes.py
 #   interpolation.py  makePostfitPlot.py  run_fit_adaptive.py
-#   CMS_lumi.py  tdrstyle.py  dimuonX_config.json (example config)
+#   convert_signal_h5.py  CMS_lumi.py  tdrstyle.py
+#   dimuonX_config.json (example config)
 #
 # Particular APPLICATIONS of the framework live under analyses/<name>/, each
 # with its own .gitignore for its own outputs (see analyses/dimuonX/.gitignore
