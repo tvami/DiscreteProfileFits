@@ -66,9 +66,14 @@ Example config (`dimuonX_config.json`):
     "lumi":         "",
     "scale_j_unc":  0.01,
     "res_j_unc":    0.035,
+    "lumi_unc":     0.016,
     "sig_norm":     100.0,
     "ftest_thresh": 0.05,
     "err_thresh":   0.5,
+    "bkg_name":       "CMS_EXO26006_bkg",
+    "pdf_index_name": "CMS_EXO26006_bkg_pdfindex",
+    "bkg_par_prefix": "CMS_EXO26006_bkg_",
+    "lumi_syst_name": "lumi_13p6TeV_2024",
     "func_forms": {
         "bern":    [2, 3, 4],
         "polyExp": [1, 2, 3],
@@ -95,9 +100,29 @@ Key fields:
 | `bin_size` | Histogram bin width (GeV). A good rule of thumb is `0.25 × σ_signal` |
 | `dcb_model` | Use double crystal-ball signal model (recommended) |
 | `sig_norm` | Signal yield corresponding to signal strength `r = 1` |
+| `lumi_unc` | Fractional integrated-luminosity uncertainty, written as an lnN on the signal only (the background is data-driven). `0.016` for 2024, CERN-CMS-DP-2026-003. Set `<= 0` to drop the nuisance |
+| `bkg_name` | Name of the background envelope (`RooMultiPdf`) in the workspace and the card. Default `multi_pdf`. Its yield is always `<bkg_name>_norm`, since combine looks the normalization up by that name |
+| `pdf_index_name` | Name of the discrete-profiling index. Default `pdf_index` |
+| `bkg_par_prefix` | Prefix for the background pdf and shape-parameter names, e.g. `CMS_EXO26006_bkg_` gives `CMS_EXO26006_bkg_bern_p0`. Default empty, i.e. `bern_p0` |
+| `lumi_syst_name` | Name of the luminosity lnN nuisance. Default `lumi_13p6TeV` |
 | `ftest_thresh` | p-value threshold for the F-test to prefer a higher-order function |
 | `err_thresh` | Fractional fit-error threshold; models with large errors are excluded from F-test. Currently inert — `doFit.py` doesn't populate per-order fit errors, so this guard never fires; kept for when that's restored |
 | `func_forms` | Dict mapping functional-form name → list of orders to try. Available forms: `bern` (Bernstein polynomial), `exp` (sum of exponentials), `polyExp` (polynomial × exponential), `expPoly` (exponential of a polynomial) |
+
+### Nuisance parameter naming
+
+`bkg_name`, `pdf_index_name`, `bkg_par_prefix` and `lumi_syst_name` exist so that the
+released cards can follow the
+[CMS systematics naming conventions](https://gitlab.cern.ch/cms-analysis/general/systematics),
+which require analysis-specific parameters to start with `CMS_<analysisID>_` and the
+luminosity nuisance to carry its era. The defaults reproduce the historical generic
+names (`multi_pdf`, `pdf_index`, `bern_p0`, `lumi_13p6TeV`), so existing configs are
+unaffected; `analyses/dimuonX/dimuonX_config.json` sets the EXO-26-006 names.
+
+`bkg_par_prefix` is applied to both the F-test fits and the final workspace shapes,
+because the F-test best-fit values are cached under the parameter names and re-read as
+starting points for the envelope. Changing only one of the two would silently drop the
+seeding.
 
 ## Available background functional forms
 

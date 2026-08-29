@@ -12,10 +12,37 @@
     "sig_norm": 100.0,
     "ftest_thresh": 0.05,
     "err_thresh": 0.5,
+    "bkg_name": "CMS_EXO26006_bkg",
+    "pdf_index_name": "CMS_EXO26006_bkg_pdfindex",
+    "bkg_par_prefix": "CMS_EXO26006_bkg_",
+    "lumi_syst_name": "lumi_13p6TeV_2024",
+    "trig_eff_unc": 0.015,
+    "trig_eff_name": "CMS_EXO26006_eff_m_trigger",
+    "muon_id_eff_unc": 0.0584,
+    "muon_id_eff_name": "CMS_EXO26006_eff_m_id",
+    "anom_eff_unc": 0.05,
+    "anom_eff_name": "CMS_EXO26006_eff_anom",
     "func_forms": {
-        "bern":    [2, 3, 4],
-        "polyExp": [1, 2, 3],
-        "exp":     [1, 2, 3],
-        "expPoly": [1, 2, 3, 4]
+        "bern": [
+            2,
+            3,
+            4
+        ],
+        "polyExp": [
+            1,
+            2,
+            3
+        ],
+        "exp": [
+            1,
+            2,
+            3
+        ],
+        "expPoly": [
+            1,
+            2,
+            3,
+            4
+        ]
     }
 }

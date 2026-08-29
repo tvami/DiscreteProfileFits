@@ -8,10 +8,17 @@ from Fitter import Fitter
 ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
 
 class DataCardMaker:
-    def __init__(self,tag, outdir=""):
+    # bkg_name / pdf_index_name set the names of the background envelope (RooMultiPdf)
+    # and of its discrete index in the workspace and the datacard. The defaults keep the
+    # historical generic names; pass CMS-convention names (e.g. 'CMS_<analysisID>_bkg')
+    # when the cards are released. The envelope's yield is always <bkg_name>_norm, since
+    # combine looks the normalization up by that name.
+    def __init__(self,tag, outdir="", bkg_name="multi_pdf", pdf_index_name="pdf_index"):
         self.systematics=[]
         self.tag="mass"+"_"+tag
         self.outdir = outdir
+        self.bkg_name = bkg_name
+        self.pdf_index_name = pdf_index_name
         self.rootFile = ROOT.TFile(self.outdir + "datacardInputs_%s.root"%self.tag,"RECREATE")
         self.rootFile.cd()
         self.w=ROOT.RooWorkspace("w","w")
@@ -113,7 +120,7 @@ class DataCardMaker:
                 f.write('\n' )  
 
         #include discrete profiling nuisance
-        f.write("pdf_index discrete")
+        f.write("%s discrete" % self.pdf_index_name)
                         
         f.close()
 
@@ -343,7 +350,7 @@ class DataCardMaker:
 
     def buildBkgShape(self):
         #Make a RooCategory object. This will control which of the pdfs is "active"
-        cat = ROOT.RooCategory("pdf_index","Index of Pdf which is active")
+        cat = ROOT.RooCategory(self.pdf_index_name,"Index of Pdf which is active")
 
 
         rList = ROOT.RooArgList()
@@ -351,18 +358,19 @@ class DataCardMaker:
             rList.add(shape)
             #getattr(self.w,'import')(shape)
 
-        multi_pdf = ROOT.RooMultiPdf("multi_pdf", "All pdfs", cat, rList)
+        multi_pdf = ROOT.RooMultiPdf(self.bkg_name, "All pdfs", cat, rList)
         #automatically adds the -0.5 penalty to likelihood per degree of freedom
 
-        norm_var = ROOT.RooRealVar("multi_pdf_norm","Number of background events", self.nData,0,1e8);
+        norm_name = self.bkg_name + "_norm"
+        norm_var = ROOT.RooRealVar(norm_name,"Number of background events", self.nData,0,1e8);
 
-        self.addSystematic("multi_pdf_norm", "flatParam", [])
+        self.addSystematic(norm_name, "flatParam", [])
 
         getattr(self.w,'import')(cat)
         getattr(self.w,'import')(multi_pdf)
         getattr(self.w,'import')(norm_var)
 
-        self.contributions.append({'name':'background','pdf':'multi_pdf','ID':1,'yield':1})
+        self.contributions.append({'name':'background','pdf':self.bkg_name,'ID':1,'yield':1})
 
 
     def addBkgShapeNoTag(self,name,variable, fname, func_form = "bern",   order=4):
