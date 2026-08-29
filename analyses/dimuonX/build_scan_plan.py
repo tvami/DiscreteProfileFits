@@ -47,6 +47,12 @@ def main():
     ap.add_argument("--exclude-band", nargs=2, type=float, metavar=("LO", "HI"),
                     default=None, help="drop any mass hypothesis whose +/-NSIGMA fit "
                     "window overlaps this GeV band (e.g. a masked/empty region in the MC)")
+    ap.add_argument("--m-hypothesis-max", type=float, default=None,
+                    help="drop hypotheses above this mass (GeV). The grid otherwise "
+                         "runs to the highest window center + 1.25 GeV, which for the "
+                         "SR-MC scan reaches 78.7 GeV -- close enough to the 80 GeV "
+                         "data ceiling that the nominal +/-7 sigma window is "
+                         "truncated. 75.0 reproduces the 97-hypothesis scan in the AN")
     ap.add_argument("--exclude-nsigma", type=float, default=7.0,
                     help="fit-window half-width (in sigma) used for --exclude-band overlap "
                     "test; match the adaptive wrapper's nominal start (default 7)")
@@ -83,6 +89,8 @@ def main():
     m_lo = max(min(centers) - OWN, float(node_masses.min()))
     # cap at the highest 2B signal template node (no signal shape exists above it)
     m_hi = min(max(centers) + OWN, float(node_masses.max()))
+    if args.m_hypothesis_max is not None:
+        m_hi = min(m_hi, args.m_hypothesis_max)
 
     # Global grid, stepped by the local resolution.
     #
