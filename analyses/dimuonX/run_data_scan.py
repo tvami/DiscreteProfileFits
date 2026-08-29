@@ -21,6 +21,11 @@ from concurrent.futures import ThreadPoolExecutor
 # framework, one level up from this analysis directory.
 FRAMEWORK_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 
+# Limit fields written by doFit.py that the summary carries through to the sigma*B
+# conversion. All are in events at the r=1 normalization (sig_norm).
+LIMIT_FIELDS = ("exp_lim_events", "exp_lim_1sig_low", "exp_lim_1sig_high",
+                "exp_lim_2sig_low", "exp_lim_2sig_high", "sig_norm")
+
 
 def get_args():
     ap = argparse.ArgumentParser(description=__doc__,
@@ -110,6 +115,10 @@ def main():
                            "n_sig": ns, "n_sig_unc": nsu, "signif": sig,
                            "sbfit_prob": p, "obs_lim_events": lim,
                            "m_min": mlo, "m_max": mhi}
+            # Expected limit + bands and the normalization convention, needed to turn
+            # the event limit into a sigma*B limit. doFit.py leaves these at -1 when
+            # AsymptoticLimits fails, so keep -1 rather than papering over it.
+            row[str(m)].update({k: r.get(k, -1.0) for k in LIMIT_FIELDS})
     print("-" * 92)
     print("passed %d / %d" % (npass, len(jobs)))
     sdir = os.path.dirname(args.summary)

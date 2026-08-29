@@ -59,8 +59,10 @@ def dofit(options):
     fit_label = "mumu"
     poi_name = "m"
 
-    print(" CREATE WORKSPACE ") 
-    card = DataCardMaker(fit_label, outdir=plot_dir)
+    print(" CREATE WORKSPACE ")
+    card = DataCardMaker(fit_label, outdir=plot_dir,
+                         bkg_name=options.bkg_name,
+                         pdf_index_name=options.pdf_index_name)
 
     card.importBinnedData(sb_fname, sig_data_name,
                           poi_name, 'data_obs', 1.0)
@@ -92,6 +94,10 @@ def dofit(options):
     for func_form, orderToTry in func_forms.items():
         print("\n \n Fitting with functional form %s " % func_form)
 
+        # Names of this family's pdf and shape parameters in the released workspace.
+        # bkg_par_prefix is empty by default, giving the historical 'bern_p0' etc.
+        par_label = options.bkg_par_prefix + func_form
+
         chi2s = [0]*len(orderToTry)
         fit_params = [0] * len(orderToTry)
         ndofs = [0]*len(orderToTry)
@@ -108,7 +114,10 @@ def dofit(options):
             # Ensure the scratch cache is always removed, even if the fit raises.
             try:
                 fitter_bkg.importBinnedData(fitting_histogram, 'm_fine', data_name)
-                fitter_bkg.bkgShape(name=model_name, poi='m_fine', order=order, func_form=func_form )
+                # par_label must match the one used for the final workspace shape below,
+                # since these fit values are cached and re-read there as starting points.
+                fitter_bkg.bkgShape(name=model_name, poi='m_fine', order=order,
+                                    func_form=func_form, par_label=par_label)
 
                 fres = fitter_bkg.fit(model_name, data_name, options=[ROOT.RooFit.Save(1), ROOT.RooFit.Verbose(0),  ROOT.RooFit.Minos(1), ROOT.RooFit.Minimizer("Minuit2")])
 
@@ -157,7 +166,8 @@ def dofit(options):
         # seeding with the Fitter's best-fit values so combine starts from a
         # good initial point for every pdf_index (not just the selected one).
         shape_builder = shape_map[func_form]
-        bkg_model,_,bkg_pars = shape_builder(func_form, card.poi, order=best_order,
+        bkg_model,_,bkg_pars = shape_builder(par_label, card.poi, order=best_order,
+                                              par_label=par_label,
                                               start_vals=fit_params[best_i])
 
         card.bkg_shapes.append(bkg_model)
@@ -175,8 +185,22 @@ def dofit(options):
     # Integrated-luminosity uncertainty. The background is data-driven, so this hits
     # the signal normalization only. 1.6% for the 2024 dataset, CERN-CMS-DP-2026-003.
     if(options.lumi_unc > 0):
-        card.addSystematic("lumi_13p6TeV", "lnN",
+        card.addSystematic(options.lumi_syst_name, "lnN",
                            values = {"model_signal_m" : 1. + options.lumi_unc})
+
+    # Signal efficiency terms. All are signal only, like the luminosity: the
+    # background is data-driven and carries the efficiencies of the data itself.
+    if(options.trig_eff_unc > 0):
+        card.addSystematic(options.trig_eff_name, "lnN",
+                           values = {"model_signal_m" : 1. + options.trig_eff_unc})
+
+    if(options.muon_id_eff_unc > 0):
+        card.addSystematic(options.muon_id_eff_name, "lnN",
+                           values = {"model_signal_m" : 1. + options.muon_id_eff_unc})
+
+    if(options.anom_eff_unc > 0):
+        card.addSystematic(options.anom_eff_name, "lnN",
+                           values = {"model_signal_m" : 1. + options.anom_eff_unc})
 
     print("making card")
     card.makeCard()
@@ -437,6 +461,37 @@ def fitting_options():
                            "CERN-CMS-DP-2026-003). Set <= 0 to disable.")
     parser.add_option("--lumi", dest="lumi", default="",
                       help="Luminosity string for plot label, e.g. '27.0 fb^{-1}'")
+    # Nuisance/object naming. The defaults reproduce the historical generic names;
+    # set these (most easily in the config JSON) to follow the CMS systematics naming
+    # conventions, which require analysis-specific parameters to start with
+    # CMS_<analysisID>_ and the luminosity nuisance to carry its era.
+    parser.add_option("--bkg-name", dest="bkg_name", default="multi_pdf",
+                      help="Name of the background envelope (RooMultiPdf) in the "
+                           "workspace; its yield is always <bkg_name>_norm")
+    parser.add_option("--pdf-index-name", dest="pdf_index_name", default="pdf_index",
+                      help="Name of the discrete profiling index in the workspace and card")
+    parser.add_option("--bkg-par-prefix", dest="bkg_par_prefix", default="",
+                      help="Prefix prepended to the background shape parameter and pdf "
+                           "names, e.g. 'CMS_EXO26006_bkg_' gives CMS_EXO26006_bkg_bern_p0")
+    parser.add_option("--lumi-syst-name", dest="lumi_syst_name", default="lumi_13p6TeV",
+                      help="Name of the integrated-luminosity lnN nuisance")
+    parser.add_option("--trig_eff_unc", dest="trig_eff_unc", type=float, default=-1.0,
+                      help="Fractional trigger-efficiency scale-factor uncertainty, applied "
+                           "as a lnN on the signal yield. Set <= 0 to disable (default).")
+    parser.add_option("--trig-eff-name", dest="trig_eff_name", default="CMS_eff_m_trigger",
+                      help="Name of the trigger-efficiency lnN nuisance. Use an analysis-specific "
+                           "name (CMS_<analysisID>_eff_m_trigger) when the scale factors are "
+                           "derived in the analysis rather than provided centrally.")
+    parser.add_option("--muon_id_eff_unc", dest="muon_id_eff_unc", type=float, default=-1.0,
+                      help="Fractional muon identification scale-factor uncertainty, applied as a "
+                           "lnN on the signal yield. Set <= 0 to disable (default).")
+    parser.add_option("--muon-id-eff-name", dest="muon_id_eff_name", default="CMS_eff_m_id",
+                      help="Name of the muon-ID efficiency lnN nuisance.")
+    parser.add_option("--anom_eff_unc", dest="anom_eff_unc", type=float, default=-1.0,
+                      help="Fractional anomaly-classifier efficiency uncertainty, applied as a "
+                           "lnN on the signal yield. Set <= 0 to disable (default).")
+    parser.add_option("--anom-eff-name", dest="anom_eff_name", default="CMS_eff_anom",
+                      help="Name of the anomaly-classifier efficiency lnN nuisance.")
     parser.add_option("--sqrts", dest="sqrts", default="13.6",
                       help="Centre-of-mass energy label (TeV)")
     # Strategy 0 is fast and fine for most points, but on a large injected signal

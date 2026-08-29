@@ -16,7 +16,7 @@ def scaledVariable(m, name='x'):
     return x
 
 
-def polyShape(name = 'model', poi = None, order=4):
+def polyShape(name = 'model', poi = None, order=4, par_label='poly', start_vals=None):
     #sum of bernstein polynomials
 
     #initial values
@@ -28,9 +28,11 @@ def polyShape(name = 'model', poi = None, order=4):
     p_objs = []
     par_names = []
     for i in range(order):
-        poly_par = ROOT.RooRealVar(f"poly_p{i}", f"poly_p{i}", start_val, pmin, pmax)
+        pname = f"{par_label}_p{i}"
+        init = start_vals[pname][0] if (start_vals and pname in start_vals) else start_val
+        poly_par = ROOT.RooRealVar(pname, pname, init, pmin, pmax)
         par_list.add(poly_par)
-        par_names.append(f"poly_p{i}")
+        par_names.append(pname)
         p_objs.append(poly_par)
 
     shape = ROOT.RooPolynomial(name+"_shape", name+"_shape", poi, par_list)
@@ -517,13 +519,18 @@ class Fitter(object):
 
 
 
-    def bkgShape(self, func_form='bern', name = 'model',poi="m",order=2):
+    def bkgShape(self, func_form='bern', name = 'model',poi="m",order=2, par_label=None):
+        # par_label sets the prefix of the shape parameter names; it defaults to the
+        # family name ('bern_p0', ...). Pass it to follow a naming convention, and pass
+        # the same value here and to the final workspace build, since the F-test fit
+        # values are cached under these names and re-read as starting points.
 
         if(type(poi) == str): poi = self.w.var(poi)
 
+        if par_label is None: par_label = func_form
 
         if(func_form in shape_map.keys()):
-            shape, par_names, objs = shape_map[func_form](name = name, poi=poi, order=order )
+            shape, par_names, objs = shape_map[func_form](name = name, poi=poi, order=order, par_label=par_label)
         else:
             print("Shape %s not implemented!" % shape)
             exit(1)

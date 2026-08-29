@@ -187,21 +187,25 @@ def make_postfit_plot(opt):
         sys.exit(1)
     print("   data_obs: %.0f events" % data.sumEntries())
 
-    # MultiPdf and index category
-    multipdf = w.pdf("multi_pdf")
+    # MultiPdf and index category. Found by class rather than by name, since the
+    # envelope can be named to follow the CMS conventions (doFit --bkg-name), e.g.
+    # CMS_<analysisID>_bkg instead of the historical 'multi_pdf'.
+    multipdf = next((p for p in w.allPdfs() if p.ClassName() == "RooMultiPdf"), None)
     if not multipdf:
-        print("ERROR: 'multi_pdf' not found in workspace")
+        print("ERROR: no RooMultiPdf found in workspace")
         sys.exit(1)
+    bkg_name = multipdf.GetName()
+    pdf_index_name = next((c.GetName() for c in w.allCats()), "pdf_index")
 
     # Background normalization.
     # This workspace ('w', the datacardInputs) knows the flatParam
-    # "multi_pdf_norm", but combine renames the fitted background yield to
+    # "<bkg_name>_norm", but combine renames the fitted background yield to
     # "shapeBkg_background_<cat>__norm" in its RooFitResult -- a name absent from
-    # this workspace. So the pre-fit multi_pdf_norm value here is only a fallback;
+    # this workspace. So the pre-fit <bkg_name>_norm value here is only a fallback;
     # the authoritative post-fit background yield is read from the RooFitResult
     # below (combine_bkg_norm). Getting this right matters in S+B mode: fit_s
     # sets the background norm to (data - signal), while fit_b sets it to data.
-    bkg_norm_var = w.var("multi_pdf_norm")
+    bkg_norm_var = w.var(bkg_name + "_norm")
     bkg_norm_fit = bkg_norm_var.getVal() if bkg_norm_var else data.sumEntries()
     combine_bkg_norm = None   # post-fit shapeBkg_background_<cat>__norm from RooFitResult
 
@@ -284,12 +288,12 @@ def make_postfit_plot(opt):
                 # actually floated, so its parameters are still pre-fit and the
                 # resulting b+s chi2 is meaningless. See the pdf_index -> name
                 # mapping below (index i == multipdf.getPdf(i)).
-                idx_cat = fit_result.constPars().find("pdf_index")
+                idx_cat = fit_result.constPars().find(pdf_index_name)
                 if idx_cat:
                     try:
                         selected_pdf_index = int(idx_cat.getIndex())
-                        print("   Combine post-fit pdf_index = %d (%s)"
-                              % (selected_pdf_index, idx_cat.getLabel()))
+                        print("   Combine post-fit %s = %d (%s)"
+                              % (pdf_index_name, selected_pdf_index, idx_cat.getLabel()))
                     except Exception:
                         selected_pdf_index = None
             else:

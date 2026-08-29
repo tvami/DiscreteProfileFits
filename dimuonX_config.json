@@ -8,6 +8,7 @@
     "lumi": "",
     "scale_j_unc": 0.01,
     "res_j_unc": 0.035,
+    "lumi_unc": 0.016,
     "sig_norm": 100.0,
     "ftest_thresh": 0.05,
     "err_thresh": 0.5,
